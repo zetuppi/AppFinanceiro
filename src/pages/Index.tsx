@@ -9,33 +9,35 @@ import { Wallet, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { FinancialAssistant } from "@/components/FinancialAssistant";
 
 const STORAGE_KEY = "finance-app-expenses";
 
 const Index = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expensesLoaded, setExpensesLoaded] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
-  }, [user, loading, navigate]);
 
   useEffect(() => {
     if (user) {
       const stored = localStorage.getItem(STORAGE_KEY);
+
       if (stored) {
         setExpenses(JSON.parse(stored));
       }
+
+      setExpensesLoaded(true);
     }
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-  }, [expenses]);
+    if (expensesLoaded) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+    }
+  }, [expenses, expensesLoaded]);
 
   const handleAddExpense = (expense: Expense) => {
     setExpenses([expense, ...expenses]);
@@ -96,6 +98,8 @@ const Index = () => {
 
         <div className="space-y-6">
           <SummaryCards expenses={expenses} />
+
+          <FinancialAssistant expenses={expenses} />
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
