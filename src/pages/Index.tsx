@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialAssistant } from "@/components/FinancialAssistant";
 
-const STORAGE_KEY = "finance-app-expenses";
+const getStorageKey = (userId: string) => `finance-app-expenses-${userId}`;
 
 const Index = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -23,10 +23,14 @@ const Index = () => {
 
   useEffect(() => {
     if (user) {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      setExpensesLoaded(false);
+
+      const stored = localStorage.getItem(getStorageKey(user.id));
 
       if (stored) {
         setExpenses(JSON.parse(stored));
+      } else {
+        setExpenses([]);
       }
 
       setExpensesLoaded(true);
@@ -34,10 +38,13 @@ const Index = () => {
   }, [user]);
 
   useEffect(() => {
-    if (expensesLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+    if (expensesLoaded && user) {
+      localStorage.setItem(
+        getStorageKey(user.id),
+        JSON.stringify(expenses)
+      );
     }
-  }, [expenses, expensesLoaded]);
+  }, [expenses, expensesLoaded, user]);
 
   const handleAddExpense = (expense: Expense) => {
     setExpenses([expense, ...expenses]);
