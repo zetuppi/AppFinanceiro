@@ -28,14 +28,22 @@ interface ExpenseFormProps {
 
 const categories = [
   "Alimentação",
-  "Transporte",
-  "Moradia",
-  "Saúde",
-  "Educação",
-  "Lazer",
-  "Compras",
+  "Aluguel",
+  "Assinaturas",
+  "Cartão de Crédito",
   "Contas",
+  "Condominio",
+  "Cursos",
+  "Dívidas",
+  "Investimentos",
+  "Lazer",
+  "Mercado",
   "Outros",
+  "Reserva financeira",
+  "Roupas",
+  "Saúde",
+  "Transporte (Uber/99)",
+  "Viagens",
 ];
 
 export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
@@ -48,10 +56,10 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!description || !amount || !category) {
+    if (!description || !amount || (type === "expense" && !category)) {
       toast({
         title: "Campos obrigatórios",
-        description: "Preencha todos os campos",
+        description: "Preencha todos os campos necessários",
         variant: "destructive",
       });
       return;
@@ -61,7 +69,7 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
       id: Date.now().toString(),
       description,
       amount: parseFloat(amount),
-      category,
+      category: type === "income" ? "Receita" : category,
       date: new Date().toISOString(),
       type,
     };
@@ -74,7 +82,9 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
 
     toast({
       title: "Sucesso!",
-      description: `${type === "expense" ? "Gasto" : "Receita"} registrado com sucesso`,
+      description: `${
+        type === "expense" ? "Gasto" : "Receita"
+      } registrado com sucesso`,
     });
   };
 
@@ -86,11 +96,18 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
           Nova Transação
         </CardTitle>
       </CardHeader>
+
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="type">Tipo</Label>
-            <Select value={type} onValueChange={(value: "expense" | "income") => setType(value)}>
+            <Select
+              value={type}
+              onValueChange={(value: "expense" | "income") => {
+                setType(value);
+                setCategory("");
+              }}
+            >
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>
@@ -107,7 +124,11 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex: Almoço no restaurante"
+              placeholder={
+                type === "expense"
+                  ? "Ex: Almoço no restaurante"
+                  : "Ex: Salário Lucas"
+              }
             />
           </div>
 
@@ -123,21 +144,25 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
+          {type === "expense" && (
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
+                  <Button
+                    key={cat}
+                    type="button"
+                    variant={category === cat ? "default" : "outline"}
+                    className="justify-start"
+                    onClick={() => setCategory(cat)}
+                  >
                     {cat}
-                  </SelectItem>
+                  </Button>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
+            </div>
+          )}
 
           <Button type="submit" className="w-full">
             <PlusCircle className="mr-2 h-4 w-4" />

@@ -20,7 +20,6 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-
   useEffect(() => {
     if (user) {
       setExpensesLoaded(false);
@@ -56,10 +55,12 @@ const Index = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+
     toast({
       title: "Até logo!",
       description: "Você saiu da sua conta.",
     });
+
     navigate("/auth");
   };
 
@@ -87,15 +88,15 @@ const Index = () => {
               <div className="p-3 rounded-xl bg-primary/10">
                 <Wallet className="h-8 w-8 text-primary" />
               </div>
+
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-foreground">
                   Gestão Financeira
                 </h1>
-                <p className="text-muted-foreground">
-                  {user.email}
-                </p>
+                <p className="text-muted-foreground">{user.email}</p>
               </div>
             </div>
+
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
@@ -109,14 +110,15 @@ const Index = () => {
           <FinancialAssistant expenses={expenses} />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-6">
-              <ExpenseForm onAddExpense={handleAddExpense} />
-              <ExpenseChart expenses={expenses} />
-            </div>
-            <div>
-              <ExpenseList expenses={expenses} onDeleteExpense={handleDeleteExpense} />
-            </div>
+            <ExpenseForm onAddExpense={handleAddExpense} />
+
+            <ExpenseChart expenses={expenses} />
           </div>
+
+          <ExpenseList
+            expenses={expenses}
+            onDeleteExpense={handleDeleteExpense}
+          />
         </div>
       </div>
     </div>

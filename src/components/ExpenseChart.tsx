@@ -47,7 +47,7 @@ export const ExpenseChart = ({ expenses }: ExpenseChartProps) => {
     return (
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Gastos por Categoria</CardTitle>
+          <CardTitle>Relatório de Gastos</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-center text-muted-foreground py-8">
@@ -61,7 +61,7 @@ export const ExpenseChart = ({ expenses }: ExpenseChartProps) => {
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Gastos por Categoria</CardTitle>
+        <CardTitle>Relatório de Gastos</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
