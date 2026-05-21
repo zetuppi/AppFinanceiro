@@ -82,9 +82,8 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
 
     toast({
       title: "Sucesso!",
-      description: `${
-        type === "expense" ? "Gasto" : "Receita"
-      } registrado com sucesso`,
+      description: `${type === "expense" ? "Gasto" : "Receita"
+        } registrado com sucesso`,
     });
   };
 
