@@ -1,40 +1,72 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 import { Expense } from "./ExpenseForm";
 
 interface ExpenseChartProps {
   expenses: Expense[];
+  selectedMonth: string;
 }
 
 const COLORS = [
-  "hsl(0 75% 55%)",
-  "hsl(25 95% 55%)",
-  "hsl(45 95% 55%)",
-  "hsl(145 65% 45%)",
-  "hsl(215 85% 45%)",
-  "hsl(275 75% 55%)",
-  "hsl(335 75% 55%)",
-  "hsl(190 75% 45%)",
-  "hsl(60 70% 50%)",
+  "#2563eb",
+  "#14b8a6",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
 ];
 
-export const ExpenseChart = ({ expenses }: ExpenseChartProps) => {
-  const expensesByCategory = expenses
+export const ExpenseChart = ({
+  expenses,
+  selectedMonth,
+}: ExpenseChartProps) => {
+  const expenseData = expenses
     .filter((expense) => expense.type === "expense")
-    .reduce((acc, expense) => {
-      if (!acc[expense.category]) {
-        acc[expense.category] = 0;
-      }
-      acc[expense.category] += expense.amount;
-      return acc;
-    }, {} as Record<string, number>);
+    .reduce<{ name: string; value: number }[]>((acc, expense) => {
+      const existingCategory = acc.find(
+        (item) => item.name === expense.category
+      );
 
-  const chartData = Object.entries(expensesByCategory)
-    .map(([category, amount]) => ({
-      name: category,
-      value: amount,
-    }))
-    .sort((a, b) => b.value - a.value);
+      if (existingCategory) {
+        existingCategory.value += expense.amount;
+      } else {
+        acc.push({
+          name: expense.category,
+          value: expense.amount,
+        });
+      }
+
+      return acc;
+    }, []);
+
+  const consumptionExpenseData = expenseData.filter(
+    (expense) => expense.name !== "Reserva financeira"
+  );
+
+  const totalConsumptionExpenses = consumptionExpenseData.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
+
+  const topExpenses = [...consumptionExpenseData]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -43,56 +75,107 @@ export const ExpenseChart = ({ expenses }: ExpenseChartProps) => {
     }).format(value);
   };
 
-  if (chartData.length === 0) {
-    return (
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Relatório de Gastos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-muted-foreground py-8">
-            Adicione despesas para ver o gráfico
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const formatSelectedMonth = (month: string) => {
+    const [year, monthNumber] = month.split("-");
+
+    return new Date(
+      Number(year),
+      Number(monthNumber) - 1
+    ).toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Relatório de Gastos</CardTitle>
+        <CardTitle className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <span>Relatório de Gastos</span>
+
+          <span className="text-sm font-medium text-muted-foreground capitalize">
+            {formatSelectedMonth(selectedMonth)}
+          </span>
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="mt-6 space-y-2">
-          <h4 className="font-semibold text-sm">Maiores gastos:</h4>
-          {chartData.slice(0, 3).map((item, index) => (
-            <div key={index} className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{item.name}</span>
-              <span className="font-medium">{formatCurrency(item.value)}</span>
+
+      <CardContent className="space-y-6">
+        {expenseData.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            Nenhuma despesa registrada ainda
+          </p>
+        ) : (
+          <>
+            <div className="h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {expenseData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
+
+            <div className="space-y-3">
+              <h3 className="font-semibold text-base">
+                Maiores gastos
+              </h3>
+
+              {topExpenses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum gasto de consumo registrado neste mês.
+                </p>
+              ) : (
+                topExpenses.map((expense) => {
+                  const percentage =
+                    totalConsumptionExpenses > 0
+                      ? (expense.value / totalConsumptionExpenses) * 100
+                      : 0;
+
+                  return (
+                    <div
+                      key={expense.name}
+                      className="flex items-center justify-between p-3 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {expense.name}
+                        </p>
+
+                        <p className="text-sm text-muted-foreground">
+                          {percentage.toFixed(1)}% dos gastos de consumo
+                        </p>
+                      </div>
+
+                      <p className="font-semibold">
+                        {formatCurrency(expense.value)}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

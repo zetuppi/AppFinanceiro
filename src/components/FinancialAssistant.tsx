@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Expense } from "@/components/ExpenseForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  BrainCircuit,
   AlertTriangle,
-  Lightbulb,
-  ShieldCheck,
-  TrendingUp,
-  Sparkles,
+  BarChart3,
+  BrainCircuit,
+  FlaskConical,
   History,
-  Target,
+  Lightbulb,
   PiggyBank,
   Settings2,
-  BarChart3,
-  FlaskConical,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  TrendingUp,
 } from "lucide-react";
-import { Expense } from "@/components/ExpenseForm";
+import { useEffect, useRef, useState } from "react";
 
 interface FinancialAssistantProps {
   expenses: Expense[];
+  selectedMonth: string;
 }
 
 type InsightPriority = "high" | "medium" | "low";
@@ -39,7 +40,7 @@ const GOALS_STORAGE_KEY = "financial-ai-goals";
 
 const defaultGoals: FinancialGoals = {
   reserveGoal: 3000,
-  monthlySavingsGoal: 500,
+  monthlySavingsGoal: 1600,
   categoryLimitName: "Alimentação",
   categoryLimitValue: 600,
   personality: "equilibrada",
@@ -53,7 +54,10 @@ const fixedCategories = [
   "Assinaturas",
 ];
 
-export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
+export const FinancialAssistant = ({
+  expenses,
+  selectedMonth,
+}: FinancialAssistantProps) => {
   const [currentInsight, setCurrentInsight] = useState(0);
   const [autoPlayResetKey, setAutoPlayResetKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
@@ -82,12 +86,11 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     });
 
   const getExpenseDate = (item: Expense) => {
-    return item.date ? new Date(item.date) : new Date();
-  };
+    if (!item.date) return new Date();
 
-  const isSameMonth = (date: Date, baseDate: Date) =>
-    date.getMonth() === baseDate.getMonth() &&
-    date.getFullYear() === baseDate.getFullYear();
+    const [year, month, day] = item.date.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
 
   const getStartOfWeek = (date: Date) => {
     const newDate = new Date(date);
@@ -97,17 +100,27 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     return newDate;
   };
 
-  const now = new Date();
+  const [selectedYear, selectedMonthNumber] = selectedMonth
+    .split("-")
+    .map(Number);
 
-  const currentMonthExpenses = expenses.filter((item) =>
-    isSameMonth(getExpenseDate(item), now)
-  );
+  const today = new Date();
 
-  const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const isSelectedMonthCurrent =
+    selectedYear === today.getFullYear() &&
+    selectedMonthNumber - 1 === today.getMonth();
 
-  const previousMonthExpenses = expenses.filter((item) =>
-    isSameMonth(getExpenseDate(item), previousMonthDate)
-  );
+  const daysInMonth = new Date(
+    selectedYear,
+    selectedMonthNumber,
+    0
+  ).getDate();
+
+  const now = isSelectedMonthCurrent
+    ? today
+    : new Date(selectedYear, selectedMonthNumber - 1, daysInMonth);
+
+  const currentMonthExpenses = expenses;
 
   const currentWeekStart = getStartOfWeek(now);
 
@@ -163,12 +176,6 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
 
   const suggestedReserve = balance > 0 ? balance * 0.3 : 0;
 
-  const daysInMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0
-  ).getDate();
-
   const currentDay = now.getDate();
   const remainingDays = Math.max(daysInMonth - currentDay, 0);
 
@@ -214,24 +221,11 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     )
     .reduce((sum, item) => sum + item.amount, 0);
 
-  const previousMonthRealExpenses = previousMonthExpenses
-    .filter(
-      (item) =>
-        item.type === "expense" && item.category !== "Reserva financeira"
-    )
-    .reduce((sum, item) => sum + item.amount, 0);
-
   const weeklyChangePercentage =
     previousWeekRealExpenses > 0
       ? ((currentWeekRealExpenses - previousWeekRealExpenses) /
-          previousWeekRealExpenses) *
-        100
-      : 0;
-
-  const monthlyChangePercentage =
-    previousMonthRealExpenses > 0
-      ? ((realExpenses - previousMonthRealExpenses) / previousMonthRealExpenses) *
-        100
+        previousWeekRealExpenses) *
+      100
       : 0;
 
   const monthlySavingsPercentage =
@@ -256,7 +250,6 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     if (projectedFinalBalance < 0) score -= 20;
     if (categoryLimitPercentage > 100) score -= 10;
     if (weeklyChangePercentage > 30) score -= 8;
-    if (monthlyChangePercentage > 25) score -= 8;
 
     return Math.max(0, Math.min(100, Math.round(score)));
   };
@@ -293,20 +286,125 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     score,
   ]);
 
+  const getPersonalityLabel = () => {
+    if (goals.personality === "conservadora") return "Conservadora";
+    if (goals.personality === "agressiva") return "Agressiva";
+    if (goals.personality === "premium") return "Premium";
+    return "Equilibrada";
+  };
+
   const getPersonalityMessage = () => {
     if (goals.personality === "conservadora") {
-      return "Modo conservador ativo: a IA vai priorizar segurança, reserva financeira e redução de riscos.";
+      return "Modo conservador ativo: a IA fica mais cautelosa, valoriza reserva financeira, proteção de saldo e redução de riscos antes de sugerir qualquer folga no orçamento.";
     }
 
     if (goals.personality === "agressiva") {
-      return "Modo economia agressiva ativo: a IA vai procurar desperdícios e sugerir cortes com mais firmeza.";
+      return "Modo agressivo ativo: a IA fica mais direta, procura desperdícios com lupa e sugere cortes mais firmes para acelerar a economia mensal.";
     }
 
     if (goals.personality === "premium") {
-      return "Modo fintech premium ativo: a IA vai analisar seus dados com foco em estratégia, tendência e tomada de decisão.";
+      return "Modo premium ativo: a IA interpreta seus dados com linguagem mais estratégica, destacando fluxo de caixa, margem de segurança e tomada de decisão.";
     }
 
-    return "Modo equilibrado ativo: a IA busca controle financeiro sem ignorar sua qualidade de vida.";
+    return "Modo equilibrado ativo: a IA busca um meio-termo entre controle financeiro, reserva e qualidade de vida.";
+  };
+
+  const getPriorityAlertMessage = () => {
+    if (balance < 0) {
+      if (goals.personality === "conservadora") {
+        return "Saldo negativo detectado. A recomendação conservadora é pausar gastos variáveis e priorizar a recuperação da margem financeira.";
+      }
+
+      if (goals.personality === "agressiva") {
+        return "Saldo negativo no radar. Corte rápido nos gastos não essenciais para virar o jogo ainda neste período.";
+      }
+
+      if (goals.personality === "premium") {
+        return "Seu fluxo de caixa projetado entrou em zona crítica. O ideal é proteger liquidez e revisar despesas variáveis imediatamente.";
+      }
+
+      return "Você está com saldo negativo. O foco principal agora deve ser reduzir despesas e recuperar margem financeira.";
+    }
+
+    if (realExpensePercentage > 70) {
+      if (goals.personality === "conservadora") {
+        return "Seu comprometimento de renda está alto para um perfil conservador. Vale reduzir gastos variáveis antes que a reserva seja pressionada.";
+      }
+
+      if (goals.personality === "agressiva") {
+        return "Os gastos reais passaram de um ponto confortável. Hora de atacar os maiores vazamentos do orçamento.";
+      }
+
+      if (goals.personality === "premium") {
+        return "O comprometimento da renda está elevado. A IA sugere reequilibrar o orçamento para preservar margem de decisão.";
+      }
+
+      return "Seus gastos reais estão altos. Vale revisar despesas variáveis antes de assumir novos compromissos.";
+    }
+
+    if (goals.personality === "conservadora") {
+      return "Nenhum risco crítico encontrado, mas o perfil conservador recomenda manter foco em reserva e previsibilidade.";
+    }
+
+    if (goals.personality === "agressiva") {
+      return "Nenhum alerta crítico agora. Existe espaço para buscar economia extra e acelerar sua meta mensal.";
+    }
+
+    if (goals.personality === "premium") {
+      return "Cenário estável. Seu fluxo financeiro não apresenta risco imediato e mantém boa margem de controle.";
+    }
+
+    return "Nenhum alerta crítico encontrado. Seu cenário atual não apresenta risco financeiro imediato.";
+  };
+
+  const getForecastMessage = () => {
+    if (projectedFinalBalance < 0) {
+      if (goals.personality === "conservadora") {
+        return `A projeção conservadora acendeu alerta: possível saldo negativo de ${formatCurrency(
+          Math.abs(projectedFinalBalance)
+        )}. A IA recomenda conter gastos variáveis agora.`;
+      }
+
+      if (goals.personality === "agressiva") {
+        return `A previsão indica rombo de ${formatCurrency(
+          Math.abs(projectedFinalBalance)
+        )}. A IA sugere cortes imediatos para recuperar o mês.`;
+      }
+
+      if (goals.personality === "premium") {
+        return `A projeção aponta déficit de ${formatCurrency(
+          Math.abs(projectedFinalBalance)
+        )}. O fluxo de caixa precisa de ajuste para preservar liquidez.`;
+      }
+
+      return `A IA prevê saldo negativo de ${formatCurrency(
+        Math.abs(projectedFinalBalance)
+      )}. Ela separou ${formatCurrency(
+        fixedExpenses
+      )} em gastos fixos e projetou apenas os gastos variáveis.`;
+    }
+
+    if (goals.personality === "conservadora") {
+      return `A previsão indica saldo final de ${formatCurrency(
+        projectedFinalBalance
+      )}. Mesmo positivo, a IA recomenda manter cautela e proteger a reserva.`;
+    }
+
+    if (goals.personality === "agressiva") {
+      return `A IA prevê saldo final de ${formatCurrency(
+        projectedFinalBalance
+      )}. Dá para buscar mais economia atacando os gastos variáveis do mês.`;
+    }
+
+    if (goals.personality === "premium") {
+      return `A projeção indica saldo final de ${formatCurrency(
+        projectedFinalBalance
+      )}. Sua margem financeira permanece positiva após gastos fixos e variáveis projetados.`;
+    }
+
+    return `A IA prevê saldo final de ${formatCurrency(
+      projectedFinalBalance
+    )}. A projeção considera gastos fixos já pagos e tendência dos gastos variáveis.`;
   };
 
   const getFinancialAnalysis = () => {
@@ -371,7 +469,7 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
 
   const getSmartSuggestion = () => {
     if (isTestScenario) {
-      return "Como muitas movimentações foram registradas no mesmo dia, a IA entende que isso pode ser um cenário de teste. Para uma previsão mais realista, futuramente o app pode permitir escolher a data da transação.";
+      return "A IA detectou muitos lançamentos no mesmo dia. Isso pode ser um cenário de teste, então ela vai interpretar previsões temporais com mais cautela.";
     }
 
     if (goals.personality === "agressiva" && realExpensePercentage > 60) {
@@ -383,6 +481,18 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     }
 
     if (reservedAmount === 0 && totalIncome > 0) {
+      if (goals.personality === "conservadora") {
+        return "Você ainda não registrou reserva neste período. Para um perfil conservador, esse deve ser o primeiro ajuste.";
+      }
+
+      if (goals.personality === "agressiva") {
+        return "Reserva zerada no mês. Separe um valor logo no início para não deixar a meta depender do que sobrar.";
+      }
+
+      if (goals.personality === "premium") {
+        return "Ainda não há reserva registrada no período. Criar uma alocação mensal melhora sua margem de segurança financeira.";
+      }
+
       return "Você ainda não registrou nenhuma reserva financeira neste período.";
     }
 
@@ -400,6 +510,18 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
       }
     }
 
+    if (goals.personality === "conservadora") {
+      return "Continue priorizando reserva, previsibilidade e redução de gastos variáveis.";
+    }
+
+    if (goals.personality === "agressiva") {
+      return "Existe espaço para apertar os gastos variáveis e aumentar sua economia mensal.";
+    }
+
+    if (goals.personality === "premium") {
+      return "Mantenha atenção à margem de segurança e use o saldo positivo para decisões financeiras mais estratégicas.";
+    }
+
     return "Continue separando parte da receita para metas e reserva financeira.";
   };
 
@@ -409,19 +531,13 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     }
 
     if (isTestScenario) {
-      return "A IA detectou um possível cenário de testes: muitas transações foram registradas na mesma data. A leitura comportamental será mais precisa com dados distribuídos ao longo do mês.";
+      return "A IA detectou um possível cenário de testes: muitas transações foram registradas na mesma data.";
     }
 
     if (weeklyChangePercentage > 30) {
       return `Seu comportamento semanal mudou bastante: os gastos subiram ${weeklyChangePercentage.toFixed(
         1
       )}% em relação à semana anterior.`;
-    }
-
-    if (monthlyChangePercentage > 20) {
-      return `Existe uma tendência de aumento mensal: seus gastos estão ${monthlyChangePercentage.toFixed(
-        1
-      )}% maiores que no mês anterior.`;
     }
 
     if (reservedAmount > 0 && balance > 0) {
@@ -433,9 +549,21 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     }
 
     if (topCategory?.[0] === "Lazer") return "Os gastos com lazer estão se destacando.";
-    if (topCategory?.[0] === "Compras") return "Compras aparece como categoria dominante.";
+    if (topCategory?.[0] === "Roupas") return "Roupas aparece como categoria dominante.";
     if (topCategory?.[0] === "Transporte (Uber/99)") return "Os gastos com transporte por aplicativo estão elevados.";
     if (topCategory?.[0] === "Alimentação") return "Alimentação está entre seus maiores gastos.";
+
+    if (goals.personality === "conservadora") {
+      return "Seu padrão financeiro está controlado, mas a IA conservadora ainda recomenda fortalecer a reserva.";
+    }
+
+    if (goals.personality === "agressiva") {
+      return "Seu padrão financeiro está moderado, com oportunidade de cortar excessos e acelerar resultados.";
+    }
+
+    if (goals.personality === "premium") {
+      return "Seu padrão financeiro mostra estabilidade operacional e boa leitura para tomada de decisão.";
+    }
 
     return "Seu padrão financeiro está moderado.";
   };
@@ -478,11 +606,48 @@ export const FinancialAssistant = ({ expenses }: FinancialAssistantProps) => {
     return "Seu comportamento financeiro segue estável.";
   };
 
+  const getHealthBadge = (score: number) => {
+    if (score >= 90) {
+      return {
+        label: "Excelente",
+        className:
+          "bg-emerald-100 text-emerald-700 border-emerald-200",
+      };
+    }
+
+    if (score >= 75) {
+      return {
+        label: "Saudável",
+        className:
+          "bg-blue-100 text-blue-700 border-blue-200",
+      };
+    }
+
+    if (score >= 60) {
+      return {
+        label: "Atenção",
+        className:
+          "bg-amber-100 text-amber-700 border-amber-200",
+      };
+    }
+
+    return {
+      label: "Risco",
+      className:
+        "bg-red-100 text-red-700 border-red-200",
+    };
+  };
+
+  const healthBadge = getHealthBadge(score);
+
+  const metricCardClass =
+    "rounded-xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5";
+
   const analysis = getFinancialAnalysis();
 
-const insights = [
-  ...(isTestScenario
-    ? [
+  const insights = [
+    ...(isTestScenario
+      ? [
         {
           title: "Modo de testes detectado",
           message:
@@ -492,206 +657,191 @@ const insights = [
           priority: "medium" as InsightPriority,
         },
       ]
-    : []),
+      : []),
 
-  {
-    title: "Alerta de prioridade",
-    message:
-      balance < 0
-        ? "Você está com saldo negativo. O foco principal agora deve ser reduzir despesas e recuperar margem financeira."
-        : realExpensePercentage > 70
-        ? "Seus gastos reais estão altos. Vale revisar despesas variáveis antes de assumir novos compromissos."
-        : "Nenhum alerta crítico encontrado. Seu cenário atual não apresenta risco financeiro imediato.",
-    icon: AlertTriangle,
-    color: "text-red-500",
-    priority:
-      balance < 0 || realExpensePercentage > 70 ? "high" : "low",
-  },
+    {
+      title: "Alerta de prioridade",
+      message: getPriorityAlertMessage(),
+      icon: AlertTriangle,
+      color: "text-red-500",
+      priority:
+        balance < 0 || realExpensePercentage > 70 ? "high" : "low",
+    },
 
-  {
-    title: "Previsão inteligente",
-    message:
-      projectedFinalBalance < 0
-        ? `A IA prevê saldo negativo de ${formatCurrency(
-            Math.abs(projectedFinalBalance)
-          )}. Ela separou ${formatCurrency(
-            fixedExpenses
-          )} em gastos fixos e projetou apenas os gastos variáveis.`
-        : `A IA prevê saldo final de ${formatCurrency(
-            projectedFinalBalance
-          )}. A projeção considera gastos fixos já pagos e tendência dos gastos variáveis.`,
-    icon: TrendingUp,
-    color: "text-blue-500",
-    priority: projectedFinalBalance < 0 ? "high" : "medium",
-  },
+    {
+      title: "Previsão inteligente",
+      message: getForecastMessage(),
+      icon: TrendingUp,
+      color: "text-blue-500",
+      priority: projectedFinalBalance < 0 ? "high" : "medium",
+    },
 
-  {
-    title: "Composição da previsão",
-    message: `Até agora, a IA identificou ${formatCurrency(
-      fixedExpenses
-    )} em gastos fixos e ${formatCurrency(
-      variableExpenses
-    )} em gastos variáveis. A previsão total do mês ficou em ${formatCurrency(
-      projectedMonthlyExpenses
-    )}.`,
-    icon: BarChart3,
-    color: "text-indigo-500",
-    priority: "medium",
-  },
+    {
+      title: "Composição da previsão",
+      message: `Até agora, a IA identificou ${formatCurrency(
+        fixedExpenses
+      )} em gastos fixos e ${formatCurrency(
+        variableExpenses
+      )} em gastos variáveis. A previsão total do mês ficou em ${formatCurrency(
+        projectedMonthlyExpenses
+      )}.`,
+      icon: BarChart3,
+      color: "text-indigo-500",
+      priority: "medium",
+    },
 
-  {
-    title: "Meta mensal de economia",
-    message:
-      monthlySavingsPercentage >= 100
-        ? `Meta batida. Você reservou ${formatCurrency(
+    {
+      title: "Meta mensal de economia",
+      message:
+        monthlySavingsPercentage >= 100
+          ? `Meta batida. Você reservou ${formatCurrency(
             reservedAmount
           )}, atingindo ${monthlySavingsPercentage.toFixed(
             1
           )}% da meta mensal de ${formatCurrency(
             goals.monthlySavingsGoal
           )}.`
-        : `Você reservou ${formatCurrency(
+          : `Você reservou ${formatCurrency(
             reservedAmount
           )} de uma meta mensal de ${formatCurrency(
             goals.monthlySavingsGoal
           )}. Faltam ${formatCurrency(
             Math.max(goals.monthlySavingsGoal - reservedAmount, 0)
           )}.`,
-    icon: Target,
-    color: "text-emerald-500",
-    priority: monthlySavingsPercentage >= 100 ? "low" : "medium",
-  },
+      icon: Target,
+      color: "text-emerald-500",
+      priority: monthlySavingsPercentage >= 100 ? "low" : "medium",
+    },
 
-  {
-    title: "Meta de reserva",
-    message: `Sua reserva atual representa ${reserveGoalPercentage.toFixed(
-      1
-    )}% da meta de ${formatCurrency(
-      goals.reserveGoal
-    )}. Esse indicador mostra o avanço da sua proteção financeira.`,
-    icon: PiggyBank,
-    color: "text-green-500",
-    priority: reserveGoalPercentage >= 100 ? "low" : "medium",
-  },
+    {
+      title: "Meta de reserva",
+      message: `Sua reserva atual representa ${reserveGoalPercentage.toFixed(
+        1
+      )}% da meta de ${formatCurrency(
+        goals.reserveGoal
+      )}. Esse indicador mostra o avanço da sua proteção financeira.`,
+      icon: PiggyBank,
+      color: "text-green-500",
+      priority: reserveGoalPercentage >= 100 ? "low" : "medium",
+    },
 
-  {
-    title: "Limite por categoria",
-    message:
-      categoryLimitPercentage > 100
-        ? `${goals.categoryLimitName} ultrapassou o limite definido. Você gastou ${formatCurrency(
+    {
+      title: "Limite por categoria",
+      message:
+        categoryLimitPercentage > 100
+          ? `${goals.categoryLimitName} ultrapassou o limite definido. Você gastou ${formatCurrency(
             monitoredCategorySpent
           )} de um teto de ${formatCurrency(goals.categoryLimitValue)}.`
-        : `${goals.categoryLimitName} está em ${categoryLimitPercentage.toFixed(
+          : `${goals.categoryLimitName} está em ${categoryLimitPercentage.toFixed(
             1
           )}% do limite definido. Gasto atual: ${formatCurrency(
             monitoredCategorySpent
           )}.`,
-    icon: BarChart3,
-    color: "text-indigo-500",
-    priority: categoryLimitPercentage > 100 ? "high" : "low",
-  },
+      icon: BarChart3,
+      color: "text-indigo-500",
+      priority: categoryLimitPercentage > 100 ? "high" : "low",
+    },
 
-  {
-    title: "Análise temporal",
-    message:
-      isTestScenario
-        ? "A análise temporal está em modo cauteloso, pois muitos lançamentos foram feitos no mesmo dia."
-        : previousWeekRealExpenses > 0
-        ? weeklyChangePercentage > 0
-          ? `Nesta semana, seus gastos estão ${weeklyChangePercentage.toFixed(
-              1
-            )}% maiores que na semana anterior.`
-          : `Nesta semana, seus gastos estão ${Math.abs(
-              weeklyChangePercentage
-            ).toFixed(1)}% menores que na semana anterior.`
-        : "Ainda não há dados suficientes da semana anterior para comparação temporal.",
-    icon: TrendingUp,
-    color: "text-cyan-500",
-    priority: weeklyChangePercentage > 25 ? "high" : "medium",
-  },
+    {
+      title: "Análise temporal",
+      message:
+        isTestScenario
+          ? "A análise temporal está em modo cauteloso, pois muitos lançamentos foram feitos no mesmo dia."
+          : previousWeekRealExpenses > 0
+            ? weeklyChangePercentage > 0
+              ? `Nesta semana, seus gastos estão ${weeklyChangePercentage.toFixed(
+                1
+              )}% maiores que na semana anterior.`
+              : `Nesta semana, seus gastos estão ${Math.abs(
+                weeklyChangePercentage
+              ).toFixed(1)}% menores que na semana anterior.`
+            : "Ainda não há dados suficientes da semana anterior para comparação temporal.",
+      icon: TrendingUp,
+      color: "text-cyan-500",
+      priority: weeklyChangePercentage > 25 ? "high" : "medium",
+    },
 
-  {
-    title: "Hoje seu padrão mudou",
-    message: getPatternChangeMessage(),
-    icon: Sparkles,
-    color: "text-purple-500",
-    priority: isTestScenario ? "medium" : "high",
-  },
+    {
+      title: "Hoje seu padrão mudou",
+      message: getPatternChangeMessage(),
+      icon: Sparkles,
+      color: "text-purple-500",
+      priority: isTestScenario ? "medium" : "high",
+    },
 
-  {
-    title: "Maior categoria de gasto",
-    message: topCategory
-      ? `Sua maior despesa está em ${topCategory[0]}, totalizando ${formatCurrency(
+    {
+      title: "Maior categoria de gasto",
+      message: topCategory
+        ? `Sua maior despesa está em ${topCategory[0]}, totalizando ${formatCurrency(
           topCategory[1]
         )}. Essa informação ajuda a identificar onde seu dinheiro está mais concentrado.`
-      : "Ainda não há categorias suficientes para análise.",
-    icon: AlertTriangle,
-    color: "text-orange-500",
-    priority: "medium",
-  },
+        : "Ainda não há categorias suficientes para análise.",
+      icon: AlertTriangle,
+      color: "text-orange-500",
+      priority: "medium",
+    },
 
-  {
-    title: "Sugestão inteligente",
-    message: getSmartSuggestion(),
-    icon: Lightbulb,
-    color: "text-yellow-500",
-    priority: "medium",
-  },
+    {
+      title: "Sugestão inteligente",
+      message: getSmartSuggestion(),
+      icon: Lightbulb,
+      color: "text-yellow-500",
+      priority: "medium",
+    },
 
-  {
-    title: "Potencial de reserva",
-    message:
-      balance > 0
-        ? `Você já reservou ${formatCurrency(
+    {
+      title: "Potencial de reserva",
+      message:
+        balance > 0
+          ? `Você já reservou ${formatCurrency(
             reservedAmount
           )}. Ainda poderia separar mais ${formatCurrency(
             suggestedReserve
           )} ou manter esse valor como margem de segurança.`
-        : "No momento não há margem positiva para ampliar sua reserva.",
-    icon: ShieldCheck,
-    color: "text-green-500",
-    priority: "medium",
-  },
+          : "No momento não há margem positiva para ampliar sua reserva.",
+      icon: ShieldCheck,
+      color: "text-green-500",
+      priority: "medium",
+    },
 
-  {
-    title: "Leitura comportamental",
-    message: getBehaviorAnalysis(),
-    icon: TrendingUp,
-    color: "text-blue-500",
-    priority: "medium",
-  },
+    {
+      title: "Leitura comportamental",
+      message: getBehaviorAnalysis(),
+      icon: TrendingUp,
+      color: "text-blue-500",
+      priority: "medium",
+    },
 
-  {
-    title: "Personalidade da IA",
-    message: getPersonalityMessage(),
-    icon: Sparkles,
-    color: "text-violet-500",
-    priority: "low",
-  },
+    {
+      title: "Personalidade da IA",
+      message: getPersonalityMessage(),
+      icon: Sparkles,
+      color: "text-violet-500",
+      priority: "low",
+    },
 
-  {
-    title: "Histórico de comportamento",
-    message: previousPattern
-      ? `Último score salvo: ${
-          previousPattern.score ?? 0
+    {
+      title: "Histórico de comportamento",
+      message: previousPattern
+        ? `Último score salvo: ${previousPattern.score ?? 0
         }/100. A IA usa esse histórico para comparar mudanças no seu padrão financeiro.`
-      : "Ainda não existe histórico salvo. A partir dos próximos registros, a IA poderá comparar sua evolução.",
-    icon: History,
-    color: "text-slate-500",
-    priority: "low",
-  },
-].sort((a, b) => {
-  const priorityWeight: Record<InsightPriority, number> = {
-    high: 3,
-    medium: 2,
-    low: 1,
-  };
+        : "Ainda não existe histórico salvo. A partir dos próximos registros, a IA poderá comparar sua evolução.",
+      icon: History,
+      color: "text-slate-500",
+      priority: "low",
+    },
+  ].sort((a, b) => {
+    const priorityWeight: Record<InsightPriority, number> = {
+      high: 3,
+      medium: 2,
+      low: 1,
+    };
 
-  return (
-    priorityWeight[b.priority as InsightPriority] -
-    priorityWeight[a.priority as InsightPriority]
-  );
-});
+    return (
+      priorityWeight[b.priority as InsightPriority] -
+      priorityWeight[a.priority as InsightPriority]
+    );
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -827,11 +977,10 @@ const insights = [
                           personality,
                         }))
                       }
-                      className={`rounded-lg border px-3 py-2 text-sm capitalize transition ${
-                        goals.personality === personality
+                      className={`rounded-lg border px-3 py-2 text-sm capitalize transition ${goals.personality === personality
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-background hover:bg-primary/5"
-                      }`}
+                        }`}
                     >
                       {personality}
                     </button>
@@ -842,7 +991,7 @@ const insights = [
           </div>
         )}
 
-        <div className="rounded-lg bg-primary/5 p-4">
+        <div className="rounded-xl bg-primary/5 p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
           <h3 className="font-semibold">{analysis.title}</h3>
           <p className="text-sm text-muted-foreground mt-1">
             {analysis.message}
@@ -850,12 +999,25 @@ const insights = [
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">Score financeiro</p>
-            <p className="text-2xl font-bold">{score}/100</p>
+          <div className={metricCardClass}>
+            <p className="text-sm text-muted-foreground">
+              Score financeiro
+            </p>
+
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-2xl font-bold">
+                {score}/100
+              </p>
+
+              <span
+                className={`text-xs font-semibold px-3 py-1 rounded-full border ${healthBadge.className}`}
+              >
+                {healthBadge.label}
+              </span>
+            </div>
           </div>
 
-          <div className="rounded-lg border p-4">
+          <div className={metricCardClass}>
             <p className="text-sm text-muted-foreground">
               Gastos reais da renda
             </p>
@@ -864,7 +1026,7 @@ const insights = [
             </p>
           </div>
 
-          <div className="rounded-lg border p-4">
+          <div className={metricCardClass}>
             <p className="text-sm text-muted-foreground">Reserva já feita</p>
             <p className="text-2xl font-bold">
               {formatCurrency(reservedAmount)}
@@ -873,23 +1035,23 @@ const insights = [
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-lg border bg-background/70 p-4">
+          <div className={`${metricCardClass} bg-background/70`}>
             <p className="text-sm text-muted-foreground">
-              Previsão inteligente
+              Estimativa total de gastos
             </p>
             <p className="text-xl font-bold">
               {formatCurrency(projectedMonthlyExpenses)}
             </p>
           </div>
 
-          <div className="rounded-lg border bg-background/70 p-4">
+          <div className={`${metricCardClass} bg-background/70`}>
             <p className="text-sm text-muted-foreground">Saldo previsto</p>
             <p className="text-xl font-bold">
               {formatCurrency(projectedFinalBalance)}
             </p>
           </div>
 
-          <div className="rounded-lg border bg-background/70 p-4">
+          <div className={`${metricCardClass} bg-background/70`}>
             <p className="text-sm text-muted-foreground">Meta mensal</p>
             <p className="text-xl font-bold">
               {monthlySavingsPercentage >= 100
@@ -988,11 +1150,10 @@ const insights = [
                   setCurrentInsight(index);
                   setAutoPlayResetKey((prev) => prev + 1);
                 }}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  currentInsight === index
+                className={`h-2 rounded-full transition-all duration-300 ${currentInsight === index
                     ? "w-6 bg-primary"
                     : "w-2 bg-muted-foreground/30"
-                }`}
+                  }`}
                 aria-label={`Ir para insight ${index + 1}`}
               />
             ))}

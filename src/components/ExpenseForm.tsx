@@ -46,44 +46,55 @@ const categories = [
   "Viagens",
 ];
 
+const getTodayDate = () => {
+  return new Date().toISOString().split("T")[0];
+};
+
 export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
+  const [date, setDate] = useState(getTodayDate());
   const [type, setType] = useState<"expense" | "income">("expense");
+
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!description || !amount || (type === "expense" && !category)) {
+    if (!description || !amount || !date || (type === "expense" && !category)) {
       toast({
         title: "Campos obrigatórios",
         description: "Preencha todos os campos necessários",
         variant: "destructive",
       });
+
       return;
     }
+
+    const selectedDate = new Date(`${date}T12:00:00`);
 
     const newExpense: Expense = {
       id: Date.now().toString(),
       description,
       amount: parseFloat(amount),
       category: type === "income" ? "Receita" : category,
-      date: new Date().toISOString(),
+      date: selectedDate.toISOString(),
       type,
     };
+
+    console.log("Nova transação criada:", newExpense);
 
     onAddExpense(newExpense);
 
     setDescription("");
     setAmount("");
-    setCategory("");
 
     toast({
       title: "Sucesso!",
-      description: `${type === "expense" ? "Gasto" : "Receita"
-        } registrado com sucesso`,
+      description: `${
+        type === "expense" ? "Despesa" : "Receita"
+      } registrada com sucesso`,
     });
   };
 
@@ -100,6 +111,7 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="type">Tipo</Label>
+
             <Select
               value={type}
               onValueChange={(value: "expense" | "income") => {
@@ -110,6 +122,7 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
               <SelectTrigger id="type">
                 <SelectValue />
               </SelectTrigger>
+
               <SelectContent>
                 <SelectItem value="expense">Despesa</SelectItem>
                 <SelectItem value="income">Receita</SelectItem>
@@ -119,27 +132,39 @@ export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
+
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={
-                type === "expense"
-                  ? "Ex: Almoço no restaurante"
-                  : "Ex: Salário Lucas"
+                type === "expense" ? "Ex: Almoço no restaurante" : "Ex: Salário Lucas"
               }
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="amount">Valor (R$)</Label>
+
             <Input
               id="amount"
               type="number"
               step="0.01"
+              min="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="date">Data da transação</Label>
+
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
 

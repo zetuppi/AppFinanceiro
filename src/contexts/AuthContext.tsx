@@ -15,11 +15,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
+  return useContext(AuthContext);
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -28,23 +24,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
 
-    return () => subscription.unsubscribe();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Erro ao buscar sessão do Supabase:", error);
+
+        if (!mounted) return;
+
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
+
+    const timeout = setTimeout(() => {
+      if (!mounted) return;
+
+      console.warn("Timeout no AuthProvider. Liberando carregamento.");
+      setLoading(false);
+    }, 3000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
