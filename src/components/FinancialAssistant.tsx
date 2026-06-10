@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   FlaskConical,
   History,
+  Info,
   Lightbulb,
   PiggyBank,
   Settings2,
@@ -15,6 +16,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface FinancialAssistantProps {
   expenses: Expense[];
@@ -241,15 +247,51 @@ export const FinancialAssistant = ({
 
     let score = 100;
 
-    if (balance < 0) score -= 30;
-    if (realExpensePercentage > 90) score -= 30;
-    else if (realExpensePercentage > 70) score -= 20;
-    else if (realExpensePercentage > 50) score -= 10;
+    if (goals.personality === "conservadora") {
+      // Conservadora: severo com falta de reservas e saldo negativo, preza estabilidade absoluta
+      if (balance < 0) score -= 40;
+      if (realExpensePercentage > 80) score -= 30;
+      else if (realExpensePercentage > 60) score -= 20;
+      else if (realExpensePercentage > 45) score -= 10;
 
-    if (reservedAmount === 0) score -= 15;
-    if (projectedFinalBalance < 0) score -= 20;
-    if (categoryLimitPercentage > 100) score -= 10;
-    if (weeklyChangePercentage > 30) score -= 8;
+      if (reservedAmount === 0) score -= 25;
+      if (projectedFinalBalance < 0) score -= 30;
+      if (categoryLimitPercentage > 100) score -= 10;
+      if (weeklyChangePercentage > 20) score -= 10;
+    } else if (goals.personality === "agressiva") {
+      // Agressiva: foco agressivo em poupar e cortar gastos de consumo
+      if (balance < 0) score -= 30;
+      if (realExpensePercentage > 70) score -= 35;
+      else if (realExpensePercentage > 55) score -= 25;
+      else if (realExpensePercentage > 40) score -= 15;
+
+      if (reservedAmount === 0) score -= 20;
+      if (projectedFinalBalance < 0) score -= 20;
+      if (categoryLimitPercentage > 100) score -= 20; // Punição severa para limite estourado
+      if (weeklyChangePercentage > 15) score -= 15; // Punição por desvio de consumo semanal
+    } else if (goals.personality === "premium") {
+      // Premium: foco em eficiência de capital, fluxo de caixa livre e governança
+      if (balance < 0) score -= 35;
+      if (realExpensePercentage > 85) score -= 25;
+      else if (realExpensePercentage > 65) score -= 15;
+      else if (realExpensePercentage > 50) score -= 8;
+
+      if (reservedAmount === 0) score -= 15;
+      if (projectedFinalBalance < 0) score -= 25;
+      if (categoryLimitPercentage > 100) score -= 15;
+      if (weeklyChangePercentage > 25) score -= 10;
+    } else {
+      // Equilibrada (original)
+      if (balance < 0) score -= 30;
+      if (realExpensePercentage > 90) score -= 30;
+      else if (realExpensePercentage > 70) score -= 20;
+      else if (realExpensePercentage > 50) score -= 10;
+
+      if (reservedAmount === 0) score -= 15;
+      if (projectedFinalBalance < 0) score -= 20;
+      if (categoryLimitPercentage > 100) score -= 10;
+      if (weeklyChangePercentage > 30) score -= 8;
+    }
 
     return Math.max(0, Math.min(100, Math.round(score)));
   };
@@ -640,8 +682,625 @@ export const FinancialAssistant = ({
 
   const healthBadge = getHealthBadge(score);
 
-  const metricCardClass =
-    "rounded-xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5";
+  const getPersonalityCardBorder = () => {
+    if (goals.personality === "conservadora") return "hover:border-blue-300 dark:hover:border-blue-800 hover:shadow-blue-500/5";
+    if (goals.personality === "agressiva") return "hover:border-amber-300 dark:hover:border-amber-800 hover:shadow-amber-500/5";
+    if (goals.personality === "premium") return "hover:border-violet-300 dark:hover:border-violet-800 hover:shadow-violet-500/5";
+    return "hover:border-primary/50 hover:shadow-primary/5";
+  };
+
+  const metricCardClass = `rounded-xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 bg-card text-card-foreground ${getPersonalityCardBorder()}`;
+
+  // Speech helpers for dynamic AI insights (slides 1 to 14)
+  const getTestScenarioMessage = () => {
+    const p = goals.personality;
+    if (p === "conservadora") {
+      return "Modo de simulação identificado. A IA conservadora alerta que dados concentrados reduzem a precisão das estimativas de risco e do fluxo de caixa.";
+    }
+    if (p === "agressiva") {
+      return "Detectamos múltiplos lançamentos simultâneos. Ajustando algoritmos para desconsiderar picos artificiais e focar em despesas reais.";
+    }
+    if (p === "premium") {
+      return "Ambiente de teste detectado. A IA premium recalibrou os modelos analíticos para evitar ruídos de transações simultâneas na projeção financeira.";
+    }
+    return "Muitas movimentações foram registradas no mesmo dia. A IA entende que isso pode ser uma simulação e avisa que previsões temporais podem ficar distorcidas.";
+  };
+
+  const getForecastCompositionMessage = () => {
+    const p = goals.personality;
+    const fixedStr = formatCurrency(fixedExpenses);
+    const varStr = formatCurrency(variableExpenses);
+    const totalStr = formatCurrency(projectedMonthlyExpenses);
+    
+    if (p === "conservadora") {
+      return `Mapeamento de despesas: gastos fixos em ${fixedStr} e despesas variáveis estimadas em ${varStr}. O custo total projetado de ${totalStr} exige cautela e rígido controle de caixa.`;
+    }
+    if (p === "agressiva") {
+      return `Análise de custos: fixos somam ${fixedStr} e variáveis ${varStr}. A estimativa final é de ${totalStr}. A IA agressiva sugere cortar os itens variáveis imediatamente.`;
+    }
+    if (p === "premium") {
+      return `Estrutura de OPEX: despesas fixas consolidadas em ${fixedStr} e despesas variáveis estimadas em ${varStr}. Projeção total de saídas: ${totalStr}.`;
+    }
+    return `Até agora, a IA identificou ${fixedStr} em gastos fixos e ${varStr} em gastos variáveis. A previsão total do mês ficou em ${totalStr}.`;
+  };
+
+  const getSavingsGoalMessage = () => {
+    const p = goals.personality;
+    const rem = Math.max(goals.monthlySavingsGoal - reservedAmount, 0);
+    const remStr = formatCurrency(rem);
+    const resStr = formatCurrency(reservedAmount);
+    const targetStr = formatCurrency(goals.monthlySavingsGoal);
+    const pctStr = monthlySavingsPercentage.toFixed(1);
+    const isMet = monthlySavingsPercentage >= 100;
+    
+    if (p === "conservadora") {
+      return isMet
+        ? `Meta de proteção atingida com sucesso! Reserva de ${resStr} consolidada (${pctStr}%). Seu colchão financeiro está seguro contra imprevistos.`
+        : `Reserva parcial de ${resStr}. Ainda faltam ${remStr} para atingir sua meta de proteção e assegurar a estabilidade do seu caixa.`;
+    }
+    if (p === "agressiva") {
+      return isMet
+        ? `Meta mensal de poupança superada! ${resStr} economizados (${pctStr}%). Excelente performance de redução de desperdício.`
+        : `Apenas ${pctStr}% da meta de economia atingida. Faltam ${remStr}. Aperte o orçamento para buscar o alvo estabelecido.`;
+    }
+    if (p === "premium") {
+      return isMet
+        ? `Alocação de capital concluída. ${resStr} direcionados para ativos de reserva, atingindo ${pctStr}% do target de eficiência.`
+        : `Target de eficiência pendente. Alocação atual: ${resStr} de ${targetStr}. Recomenda-se aporte complementar de ${remStr}.`;
+    }
+    return isMet
+      ? `Meta batida. Você reservou ${resStr}, atingindo ${pctStr}% da meta mensal de ${targetStr}.`
+      : `Você reservou ${resStr} de uma meta mensal de ${targetStr}. Faltam ${remStr}.`;
+  };
+
+  const getReserveGoalMessage = () => {
+    const p = goals.personality;
+    const pctStr = reserveGoalPercentage.toFixed(1);
+    const targetStr = formatCurrency(goals.reserveGoal);
+    
+    if (p === "conservadora") {
+      return `Fundo de reserva em ${pctStr}% da meta de ${targetStr}. Para o perfil conservador, garantir esse fundo é a máxima prioridade de segurança.`;
+    }
+    if (p === "agressiva") {
+      return `Seu colchão de aporte atingiu ${pctStr}% do total de ${targetStr}. Acelere os depósitos para concluir este fundo e liberar capital para investimentos.`;
+    }
+    if (p === "premium") {
+      return `Alocação do fundo de liquidez em ${pctStr}% do target estratégico de ${targetStr}. Fluxo direcionado para a otimização de ativos.`;
+    }
+    return `Sua reserva atual representa ${pctStr}% da meta de ${targetStr}. Esse indicador mostra o avanço da sua proteção financeira.`;
+  };
+
+  const getCategoryLimitMessage = () => {
+    const p = goals.personality;
+    const spentStr = formatCurrency(monitoredCategorySpent);
+    const limitStr = formatCurrency(goals.categoryLimitValue);
+    const pctStr = categoryLimitPercentage.toFixed(1);
+    const name = goals.categoryLimitName;
+    const isExceeded = categoryLimitPercentage > 100;
+    
+    if (p === "conservadora") {
+      return isExceeded
+        ? `Alerta conservador: limite de ${name} estourado (${spentStr} gastos). Isso aumenta o risco de desequilíbrio financeiro.`
+        : `Limite da categoria ${name} sob controle (${pctStr}%). Excelente comportamento para mitigar riscos de orçamento.`;
+    }
+    if (p === "agressiva") {
+      return isExceeded
+        ? `Estouro inaceitável na categoria ${name}! Gastos atingiram ${spentStr}, superando o teto de ${limitStr}. Corte imediatamente.`
+        : `Consumo em ${name} está em ${pctStr}%. Mantenha a disciplina para evitar qualquer vazamento de capital.`;
+    }
+    if (p === "premium") {
+      return isExceeded
+        ? `Desvio de orçamento identificado em ${name}. Desembolso de ${spentStr} supera o budget planejado de ${limitStr}.`
+        : `Aderência de budget na categoria ${name} em ${pctStr}%. Alocação operacional eficiente.`;
+    }
+    return isExceeded
+      ? `${name} ultrapassou o limite definido. Você gastou ${spentStr} de um teto de ${limitStr}.`
+      : `${name} está em ${pctStr}% do limite definido. Gasto atual: ${spentStr}.`;
+  };
+
+  const getTemporalAnalysisMessage = () => {
+    const p = goals.personality;
+    const changeStr = weeklyChangePercentage.toFixed(1);
+    const absChangeStr = Math.abs(weeklyChangePercentage).toFixed(1);
+    const isIncrease = weeklyChangePercentage > 0;
+    const hasPrevious = previousWeekRealExpenses > 0;
+    
+    if (isTestScenario) {
+      if (p === "conservadora") return "Histórico temporal sob observação devido a lançamentos atípicos ocorridos no mesmo dia.";
+      if (p === "agressiva") return "Simulações de dados impedem a leitura precisa do ritmo de gastos semanais.";
+      if (p === "premium") return "Análise de tendência temporariamente suspensa por volume atípico na mesma data.";
+      return "A análise temporal está em modo cauteloso, pois muitos lançamentos foram feitos no mesmo dia.";
+    }
+    
+    if (!hasPrevious) {
+      return "Ainda não há dados suficientes da semana anterior para comparação temporal.";
+    }
+    
+    if (p === "conservadora") {
+      return isIncrease
+        ? `Aviso: os desembolsos semanais subiram ${changeStr}%. Um perfil conservador exige frear o consumo para evitar surpresas.`
+        : `Bons ventos: gastos semanais recuaram ${absChangeStr}%, fortalecendo a segurança do seu caixa contra imprevistos.`;
+    }
+    if (p === "agressiva") {
+      return isIncrease
+        ? `Ritmo inadequado: gastos semanais cresceram ${changeStr}%. É preciso restabelecer a rigidez de consumo imediatamente.`
+        : `Sucesso operacional: redução de ${absChangeStr}% nos gastos semanais. Continue apertando os custos para poupar mais.`;
+    }
+    if (p === "premium") {
+      return isIncrease
+        ? `Alerta de variação: acréscimo de ${changeStr}% nas saídas semanais. Recomendamos auditoria nos centros de custo variáveis.`
+        : `Melhoria de performance: retração de ${absChangeStr}% no fluxo de saídas em relação à semana anterior.`;
+    }
+    
+    return isIncrease
+      ? `Nesta semana, seus gastos estão ${changeStr}% maiores que na semana anterior.`
+      : `Nesta semana, seus gastos estão ${absChangeStr}% menores que na semana anterior.`;
+  };
+
+  const getTopCategoryMessage = () => {
+    const p = goals.personality;
+    if (!topCategory) {
+      return "Ainda não há categorias suficientes para análise.";
+    }
+    const name = topCategory[0];
+    const amountStr = formatCurrency(topCategory[1]);
+    
+    if (p === "conservadora") {
+      return `Risco de concentração: a categoria ${name} consome ${amountStr} do seu orçamento. Reduzir a dependência desse item trará mais estabilidade.`;
+    }
+    if (p === "agressiva") {
+      return `Foco de ataque: ${name} é o seu maior gasto, consumindo ${amountStr}. Vá direto nesse ponto para extrair economias rápidas.`;
+    }
+    if (p === "premium") {
+      return `Centro de custo dominante: maior desembolso localizado em ${name} (${amountStr}). Avaliar o ROI e a necessidade estratégica desse fluxo.`;
+    }
+    return `Sua maior despesa está em ${name}, totalizando ${amountStr}. Essa informação ajuda a identificar onde seu dinheiro está mais concentrado.`;
+  };
+
+  const getReservePotentialMessage = () => {
+    const p = goals.personality;
+    const resStr = formatCurrency(reservedAmount);
+    const sugStr = formatCurrency(suggestedReserve);
+    const hasPositiveBalance = balance > 0;
+    
+    if (p === "conservadora") {
+      return hasPositiveBalance
+        ? `Sua liquidez permite reforçar o colchão de segurança em mais ${sugStr}. Guardar este excedente é a conduta altamente recomendada.`
+        : "Caixa apertado. Evite contrair novos compromissos financeiros e proteja rigorosamente as reservas existentes.";
+    }
+    if (p === "agressiva") {
+      return hasPositiveBalance
+        ? `Não deixe saldo parado! Poupe ou invista o excedente de ${sugStr} imediatamente para acelerar a multiplicação de capital.`
+        : "Sem excedente para alocar. Revise rigorosamente suas despesas para reestabelecer a capacidade de poupar.";
+    }
+    if (p === "premium") {
+      return hasPositiveBalance
+        ? `Margem de capital livre de ${sugStr}. Sugere-se otimização fiscal ou alocação tática de liquidez em ativos estratégicos.`
+        : "Fluxo de caixa líquido zerado. Recomendado ajustar a alocação de recursos para reaver margem operacional.";
+    }
+    return hasPositiveBalance
+      ? `Você já reservou ${resStr}. Ainda poderia separar mais ${sugStr} ou manter esse valor como margem de segurança.`
+      : "No momento não há margem positiva para ampliar sua reserva.";
+  };
+
+  const getBehaviorHistoryMessage = () => {
+    const p = goals.personality;
+    const lastScore = previousPattern?.score ?? 0;
+    
+    if (!previousPattern) {
+      if (p === "conservadora") return "A IA iniciou o rastreamento de segurança. A partir das próximas ações, avaliaremos os riscos históricos.";
+      if (p === "agressiva") return "Sem histórico de performance. Nos próximos períodos, mediremos sua evolução de economia.";
+      if (p === "premium") return "Análise histórica em fase de coleta de dados. A série temporal de performance será iniciada em breve.";
+      return "A IA começou a montar seu histórico financeiro. Conforme você registra novas movimentações, ela passa a comparar seu comportamento atual.";
+    }
+    
+    if (p === "conservadora") {
+      return `Métrica de segurança anterior registrada: ${lastScore}/100. O objetivo do perfil conservador é manter a consistência e evolução gradual desse índice.`;
+    }
+    if (p === "agressiva") {
+      return `Último registro de performance de economia: ${lastScore}/100. Use isso como patamar mínimo a ser batido neste período.`;
+    }
+    if (p === "premium") {
+      return `Histórico consolidado de health score: ${lastScore}/100. Analisando a série temporal para verificar desvios estruturais de longo prazo.`;
+    }
+    return `Último score salvo: ${lastScore}/100. A IA usa esse histórico para comparar mudanças no seu padrão financeiro.`;
+  };
+
+  // Card configuration based on personality (using static titles as requested by user)
+  const getCard1Props = () => {
+    const currentScore = score;
+    const p = goals.personality;
+    
+    const title = "Score financeiro";
+    let tooltip = "Pontuação de 0 a 100 que avalia sua saúde financeira. Começa em 100 e diminui conforme fatores de risco, como saldo negativo, gastos elevados ou falta de reserva.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Índice de resiliência e proteção sob ótica conservadora. Reduz severamente com saldo negativo, falta de reservas ou volatilidade de gastos.";
+      if (currentScore >= 90) {
+        badgeLabel = "Totalmente Seguro";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (currentScore >= 75) {
+        badgeLabel = "Protegido";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (currentScore >= 60) {
+        badgeLabel = "Vulnerável";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Risco Crítico";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "Avaliação de eficiência e agressividade na economia de gastos. Exige foco extremo em corte de despesas variáveis e conformidade de limites.";
+      if (currentScore >= 90) {
+        badgeLabel = "Alta Performance";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (currentScore >= 75) {
+        badgeLabel = "Eficiente";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (currentScore >= 60) {
+        badgeLabel = "Abaixo do Potencial";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Ineficiente";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Métrica de saúde financeira estratégica baseada em fluxo de caixa, alocação de liquidez e sustentabilidade operacional de longo prazo.";
+      if (currentScore >= 90) {
+        badgeLabel = "Investment Grade";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (currentScore >= 75) {
+        badgeLabel = "Otimizado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (currentScore >= 60) {
+        badgeLabel = "Subotimizado";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Risco Operacional";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else {
+      const b = getHealthBadge(currentScore);
+      badgeLabel = b.label;
+      badgeClass = b.className;
+    }
+    
+    return { title, tooltip, value: `${currentScore}/100`, badgeLabel, badgeClass };
+  };
+
+  const getCard2Props = () => {
+    const p = goals.personality;
+    const val = realExpensePercentage;
+    
+    const title = "Gastos reais da renda";
+    let tooltip = "Percentual da sua renda comprometido com gastos reais (despesas fixas e variáveis). Reserva financeira não entra nessa conta de consumo.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Nível de exposição da sua receita aos gastos correntes. Um perfil conservador preza por manter esse índice o mais baixo possível.";
+      if (val < 40) {
+        badgeLabel = "Excelente (Seguro)";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (val < 60) {
+        badgeLabel = "Sob Controle";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (val < 75) {
+        badgeLabel = "Exposição Média";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Exposição Crítica";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "Medida direta do que foi consumido no mês. A IA agressiva sugere combater o consumo para canalizar dinheiro em investimentos.";
+      if (val < 30) {
+        badgeLabel = "Consumo Mínimo (Ideal)";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (val < 50) {
+        badgeLabel = "Moderado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (val < 70) {
+        badgeLabel = "Consumo Elevado";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Desperdício Alto";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Índice de queima de receita em atividades de consumo básico e operacional do mês atual. O objetivo é a eficiência de custos.";
+      if (val < 45) {
+        badgeLabel = "Burn Rate Eficiente";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (val < 65) {
+        badgeLabel = "Neutro";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (val < 80) {
+        badgeLabel = "Margem Estrita";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Overburn";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else {
+      if (val < 50) {
+        badgeLabel = "Baixo";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (val < 70) {
+        badgeLabel = "Moderado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (val < 85) {
+        badgeLabel = "Alto";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Crítico";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    }
+    
+    return { title, tooltip, value: `${val.toFixed(1)}%`, badgeLabel, badgeClass };
+  };
+
+  const getCard3Props = () => {
+    const p = goals.personality;
+    const goalPct = reserveGoalPercentage;
+    
+    const title = "Reserva já feita";
+    let tooltip = "Valor economizado no mês atual sob a categoria 'Reserva financeira'. Mostra o quanto você guardou para segurança futura.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Montante direcionado à reserva de emergência no período. Fundamental para suportar imprevistos sem afetar o estilo de vida.";
+      if (goalPct >= 100) {
+        badgeLabel = "Reserva Sólida";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (goalPct >= 50) {
+        badgeLabel = "Caminho Adequado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (goalPct > 0) {
+        badgeLabel = "Insuficiente";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Zero Proteção";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "Valores destinados à poupança e investimentos acumulados neste mês. A IA agressiva estimula aportes regulares e volumosos.";
+      if (goalPct >= 100) {
+        badgeLabel = "Aporte Batido";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (goalPct >= 60) {
+        badgeLabel = "Aporte Acelerado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (goalPct > 0) {
+        badgeLabel = "Aporte Razoável";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Sem Aporte";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Fluxo de capital direcionado para ativos de reserva e preservação patrimonial no mês atual.";
+      if (goalPct >= 100) {
+        badgeLabel = "Maximizando";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (goalPct >= 50) {
+        badgeLabel = "Balanceado";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (goalPct > 0) {
+        badgeLabel = "Subalocado";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Zerada";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else {
+      if (goalPct >= 100) {
+        badgeLabel = "Meta Cumprida";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (goalPct >= 30) {
+        badgeLabel = "Em Construção";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else if (goalPct > 0) {
+        badgeLabel = "Inicial";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Não Iniciada";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    }
+    
+    return { title, tooltip, value: formatCurrency(reservedAmount), badgeLabel, badgeClass };
+  };
+
+  const getCard4Props = () => {
+    const p = goals.personality;
+    const est = projectedMonthlyExpenses;
+    
+    const title = "Estimativa total de gastos";
+    let tooltip = "Projeção inteligente de quanto você terá gasto até o fim do mês, considerando despesas fixas reais e o ritmo atual de gastos variáveis.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Cálculo pessimista de fechamento de gastos mensais. Mapeia o risco potencial de estourar a receita projetada.";
+      if (totalIncome > 0 && est <= totalIncome * 0.7) {
+        badgeLabel = "Sob Controle";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (totalIncome > 0 && est <= totalIncome * 0.9) {
+        badgeLabel = "Atenção Conservadora";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Risco de Estresse";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "Projeção linear de gastos para acompanhamento de teto de custos do mês. Ajuda a identificar excessos rapidamente.";
+      if (totalIncome > 0 && est <= totalIncome * 0.6) {
+        badgeLabel = "Dentro do Teto";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (totalIncome > 0 && est <= totalIncome * 0.8) {
+        badgeLabel = "Teto Limite";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Excedido";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Previsão híbrida de despesas operacionais (gastos fixos e variáveis) do período atual sob critérios de governança financeira.";
+      if (totalIncome > 0 && est <= totalIncome * 0.75) {
+        badgeLabel = "OPEX Otimizado";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (totalIncome > 0 && est <= totalIncome * 0.9) {
+        badgeLabel = "Atenção de Custos";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Desvio de Budget";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else {
+      if (totalIncome > 0 && est <= totalIncome) {
+        badgeLabel = "Dentro do Orçamento";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else {
+        badgeLabel = "Estouro Previsto";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    }
+    
+    return { title, tooltip, value: formatCurrency(est), badgeLabel, badgeClass };
+  };
+
+  const getCard5Props = () => {
+    const p = goals.personality;
+    const bal = projectedFinalBalance;
+    
+    const title = "Saldo previsto";
+    let tooltip = "Estimativa de quanto dinheiro restará no final do mês, calculando receitas menos a projeção de gastos e reserva do período.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Valor livre projetado após o pagamento de todas as despesas e alocação de reserva. Mede a segurança contra oscilações de fluxo.";
+      if (totalIncome > 0 && bal >= totalIncome * 0.3) {
+        badgeLabel = "Robusta";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (bal >= 0) {
+        badgeLabel = "Margem Estrita";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Déficit Projetado";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "O valor projetado excedente que deve ser poupado ou investido até o fim do mês, livre de despesas operacionais.";
+      if (totalIncome > 0 && bal >= totalIncome * 0.4) {
+        badgeLabel = "Alto Rendimento";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (bal >= 0) {
+        badgeLabel = "Economia Média";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Estouro Crítico";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Fluxo de caixa livre projetado no final do mês sob ótica da IA, descontadas as previsões de investimentos e despesas.";
+      if (totalIncome > 0 && bal >= totalIncome * 0.25) {
+        badgeLabel = "Excedente Saudável";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (bal >= 0) {
+        badgeLabel = "Liquidez Limite";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      } else {
+        badgeLabel = "Fluxo Negativo";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    } else {
+      if (bal >= 0) {
+        badgeLabel = "Saldo Positivo";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else {
+        badgeLabel = "Saldo Negativo";
+        badgeClass = "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20";
+      }
+    }
+    
+    return { title, tooltip, value: formatCurrency(bal), badgeLabel, badgeClass };
+  };
+
+  const getCard6Props = () => {
+    const p = goals.personality;
+    const savPct = monthlySavingsPercentage;
+    
+    const title = "Meta mensal";
+    let tooltip = "Progresso em direção à sua meta de economia mensal. Se você reservar o valor total estipulado nas configurações, a meta será dada como concluída.";
+    let badgeLabel = "";
+    let badgeClass = "";
+    let displayValue = "";
+    
+    if (p === "conservadora") {
+      tooltip = "Progresso no cumprimento do plano de proteção financeira mensal definido nas metas.";
+      displayValue = savPct >= 100 ? "Concluída" : `${savPct.toFixed(1)}%`;
+      if (savPct >= 100) {
+        badgeLabel = "Garantida";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (savPct >= 50) {
+        badgeLabel = "Parcial";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else {
+        badgeLabel = "Desprotegido";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      }
+    } else if (p === "agressiva") {
+      tooltip = "Nível de aderência à meta de poupança estrita e economias configuradas para o período.";
+      displayValue = savPct >= 100 ? "Concluída" : `${savPct.toFixed(1)}%`;
+      if (savPct >= 100) {
+        badgeLabel = "Performance Máxima";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (savPct >= 70) {
+        badgeLabel = "Aderente";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else {
+        badgeLabel = "Abaixo do Alvo";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      }
+    } else if (p === "premium") {
+      tooltip = "Percentual de alcance da meta de alocação configurada sob diretrizes estratégicas de rentabilidade e retenção.";
+      displayValue = savPct >= 100 ? "Concluída" : `${savPct.toFixed(1)}%`;
+      if (savPct >= 100) {
+        badgeLabel = "Target Batido";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else if (savPct >= 50) {
+        badgeLabel = "Execução Moderada";
+        badgeClass = "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20";
+      } else {
+        badgeLabel = "Ajuste Requerido";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      }
+    } else {
+      displayValue = savPct >= 100 ? "Concluída" : `${savPct.toFixed(1)}%`;
+      if (savPct >= 100) {
+        badgeLabel = "Sucesso";
+        badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20";
+      } else {
+        badgeLabel = "Pendente";
+        badgeClass = "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20";
+      }
+    }
+    
+    return { title, tooltip, value: displayValue, badgeLabel, badgeClass };
+  };
+
+  const card1 = getCard1Props();
+  const card2 = getCard2Props();
+  const card3 = getCard3Props();
+  const card4 = getCard4Props();
+  const card5 = getCard5Props();
+  const card6 = getCard6Props();
 
   const analysis = getFinancialAnalysis();
 
@@ -650,8 +1309,7 @@ export const FinancialAssistant = ({
       ? [
         {
           title: "Modo de testes detectado",
-          message:
-            "Muitas movimentações foram registradas no mesmo dia. A IA entende que isso pode ser uma simulação e avisa que previsões temporais podem ficar distorcidas.",
+          message: getTestScenarioMessage(),
           icon: FlaskConical,
           color: "text-violet-500",
           priority: "medium" as InsightPriority,
@@ -678,13 +1336,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Composição da previsão",
-      message: `Até agora, a IA identificou ${formatCurrency(
-        fixedExpenses
-      )} em gastos fixos e ${formatCurrency(
-        variableExpenses
-      )} em gastos variáveis. A previsão total do mês ficou em ${formatCurrency(
-        projectedMonthlyExpenses
-      )}.`,
+      message: getForecastCompositionMessage(),
       icon: BarChart3,
       color: "text-indigo-500",
       priority: "medium",
@@ -692,22 +1344,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Meta mensal de economia",
-      message:
-        monthlySavingsPercentage >= 100
-          ? `Meta batida. Você reservou ${formatCurrency(
-            reservedAmount
-          )}, atingindo ${monthlySavingsPercentage.toFixed(
-            1
-          )}% da meta mensal de ${formatCurrency(
-            goals.monthlySavingsGoal
-          )}.`
-          : `Você reservou ${formatCurrency(
-            reservedAmount
-          )} de uma meta mensal de ${formatCurrency(
-            goals.monthlySavingsGoal
-          )}. Faltam ${formatCurrency(
-            Math.max(goals.monthlySavingsGoal - reservedAmount, 0)
-          )}.`,
+      message: getSavingsGoalMessage(),
       icon: Target,
       color: "text-emerald-500",
       priority: monthlySavingsPercentage >= 100 ? "low" : "medium",
@@ -715,11 +1352,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Meta de reserva",
-      message: `Sua reserva atual representa ${reserveGoalPercentage.toFixed(
-        1
-      )}% da meta de ${formatCurrency(
-        goals.reserveGoal
-      )}. Esse indicador mostra o avanço da sua proteção financeira.`,
+      message: getReserveGoalMessage(),
       icon: PiggyBank,
       color: "text-green-500",
       priority: reserveGoalPercentage >= 100 ? "low" : "medium",
@@ -727,16 +1360,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Limite por categoria",
-      message:
-        categoryLimitPercentage > 100
-          ? `${goals.categoryLimitName} ultrapassou o limite definido. Você gastou ${formatCurrency(
-            monitoredCategorySpent
-          )} de um teto de ${formatCurrency(goals.categoryLimitValue)}.`
-          : `${goals.categoryLimitName} está em ${categoryLimitPercentage.toFixed(
-            1
-          )}% do limite definido. Gasto atual: ${formatCurrency(
-            monitoredCategorySpent
-          )}.`,
+      message: getCategoryLimitMessage(),
       icon: BarChart3,
       color: "text-indigo-500",
       priority: categoryLimitPercentage > 100 ? "high" : "low",
@@ -744,18 +1368,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Análise temporal",
-      message:
-        isTestScenario
-          ? "A análise temporal está em modo cauteloso, pois muitos lançamentos foram feitos no mesmo dia."
-          : previousWeekRealExpenses > 0
-            ? weeklyChangePercentage > 0
-              ? `Nesta semana, seus gastos estão ${weeklyChangePercentage.toFixed(
-                1
-              )}% maiores que na semana anterior.`
-              : `Nesta semana, seus gastos estão ${Math.abs(
-                weeklyChangePercentage
-              ).toFixed(1)}% menores que na semana anterior.`
-            : "Ainda não há dados suficientes da semana anterior para comparação temporal.",
+      message: getTemporalAnalysisMessage(),
       icon: TrendingUp,
       color: "text-cyan-500",
       priority: weeklyChangePercentage > 25 ? "high" : "medium",
@@ -771,11 +1384,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Maior categoria de gasto",
-      message: topCategory
-        ? `Sua maior despesa está em ${topCategory[0]}, totalizando ${formatCurrency(
-          topCategory[1]
-        )}. Essa informação ajuda a identificar onde seu dinheiro está mais concentrado.`
-        : "Ainda não há categorias suficientes para análise.",
+      message: getTopCategoryMessage(),
       icon: AlertTriangle,
       color: "text-orange-500",
       priority: "medium",
@@ -791,14 +1400,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Potencial de reserva",
-      message:
-        balance > 0
-          ? `Você já reservou ${formatCurrency(
-            reservedAmount
-          )}. Ainda poderia separar mais ${formatCurrency(
-            suggestedReserve
-          )} ou manter esse valor como margem de segurança.`
-          : "No momento não há margem positiva para ampliar sua reserva.",
+      message: getReservePotentialMessage(),
       icon: ShieldCheck,
       color: "text-green-500",
       priority: "medium",
@@ -822,10 +1424,7 @@ export const FinancialAssistant = ({
 
     {
       title: "Histórico de comportamento",
-      message: previousPattern
-        ? `Último score salvo: ${previousPattern.score ?? 0
-        }/100. A IA usa esse histórico para comparar mudanças no seu padrão financeiro.`
-        : "Ainda não existe histórico salvo. A partir dos próximos registros, a IA poderá comparar sua evolução.",
+      message: getBehaviorHistoryMessage(),
       icon: History,
       color: "text-slate-500",
       priority: "low",
@@ -1000,64 +1599,174 @@ export const FinancialAssistant = ({
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className={metricCardClass}>
-            <p className="text-sm text-muted-foreground">
-              Score financeiro
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card1.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card1.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card1.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
             <div className="flex items-center gap-3 mt-1">
               <p className="text-2xl font-bold">
-                {score}/100
+                {card1.value}
               </p>
-
-              <span
-                className={`text-xs font-semibold px-3 py-1 rounded-full border ${healthBadge.className}`}
-              >
-                {healthBadge.label}
-              </span>
+              {card1.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card1.badgeClass}`}>
+                  {card1.badgeLabel}
+                </span>
+              )}
             </div>
           </div>
 
           <div className={metricCardClass}>
-            <p className="text-sm text-muted-foreground">
-              Gastos reais da renda
-            </p>
-            <p className="text-2xl font-bold">
-              {realExpensePercentage.toFixed(1)}%
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card2.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card2.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card2.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-2xl font-bold">
+                {card2.value}
+              </p>
+              {card2.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card2.badgeClass}`}>
+                  {card2.badgeLabel}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className={metricCardClass}>
-            <p className="text-sm text-muted-foreground">Reserva já feita</p>
-            <p className="text-2xl font-bold">
-              {formatCurrency(reservedAmount)}
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card3.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card3.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card3.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-2xl font-bold">
+                {card3.value}
+              </p>
+              {card3.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card3.badgeClass}`}>
+                  {card3.badgeLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className={`${metricCardClass} bg-background/70`}>
-            <p className="text-sm text-muted-foreground">
-              Estimativa total de gastos
-            </p>
-            <p className="text-xl font-bold">
-              {formatCurrency(projectedMonthlyExpenses)}
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card4.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card4.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card4.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-xl font-bold">
+                {card4.value}
+              </p>
+              {card4.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card4.badgeClass}`}>
+                  {card4.badgeLabel}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className={`${metricCardClass} bg-background/70`}>
-            <p className="text-sm text-muted-foreground">Saldo previsto</p>
-            <p className="text-xl font-bold">
-              {formatCurrency(projectedFinalBalance)}
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card5.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card5.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card5.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-xl font-bold">
+                {card5.value}
+              </p>
+              {card5.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card5.badgeClass}`}>
+                  {card5.badgeLabel}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className={`${metricCardClass} bg-background/70`}>
-            <p className="text-sm text-muted-foreground">Meta mensal</p>
-            <p className="text-xl font-bold">
-              {monthlySavingsPercentage >= 100
-                ? "Concluída"
-                : `${monthlySavingsPercentage.toFixed(1)}%`}
-            </p>
+            <div className="flex items-center justify-between gap-1 w-full mb-1">
+              <span className="text-sm text-muted-foreground">
+                {card6.title}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-primary transition-colors cursor-help p-0.5" aria-label={`Info ${card6.title}`}>
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[240px] text-xs" side="top">
+                  {card6.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-xl font-bold">
+                {card6.value}
+              </p>
+              {card6.badgeLabel && (
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${card6.badgeClass}`}>
+                  {card6.badgeLabel}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

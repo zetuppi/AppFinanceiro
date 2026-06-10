@@ -235,45 +235,24 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md overflow-hidden border shadow-2xl">
-        <div className="h-2 bg-gradient-to-r from-primary via-blue-500 to-cyan-400" />
+      <Card className="w-full max-w-sm overflow-hidden border shadow-2xl">
+        <div className="h-1.5 bg-gradient-to-r from-primary via-blue-500 to-cyan-400" />
 
-        <CardHeader className="space-y-4 text-center pb-4">
-          <div className="flex justify-center">
-            <div className="p-4 rounded-2xl bg-primary/10 shadow-sm">
-              <Wallet className="h-9 w-9 text-primary" />
+        <CardHeader className="space-y-1 text-center pb-3 pt-6 px-6">
+          <div className="flex items-center justify-center gap-2">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <Wallet className="h-6 w-6" />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <CardTitle className="text-3xl font-bold">
+            <CardTitle className="text-2xl font-bold tracking-tight">
               Gestão Financeira
             </CardTitle>
-
-            <CardDescription>
-              Controle, previsão e inteligência financeira em um só lugar
-            </CardDescription>
           </div>
-
-          <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-            <div className="rounded-xl border bg-muted/30 p-2">
-              <ShieldCheck className="mx-auto mb-1 h-4 w-4 text-primary" />
-              Seguro
-            </div>
-
-            <div className="rounded-xl border bg-muted/30 p-2">
-              <Sparkles className="mx-auto mb-1 h-4 w-4 text-primary" />
-              IA local
-            </div>
-
-            <div className="rounded-xl border bg-muted/30 p-2">
-              <Lock className="mx-auto mb-1 h-4 w-4 text-primary" />
-              Privado
-            </div>
-          </div>
+          <CardDescription className="text-xs text-muted-foreground">
+            Sua carteira inteligente com análise comportamental e IA local.
+          </CardDescription>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="px-6 pb-6 pt-2">
           <Tabs
             value={activeTab}
             onValueChange={(value) =>
@@ -281,211 +260,208 @@ const Auth = () => {
             }
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 rounded-xl p-1">
-              <TabsTrigger value="login" className="rounded-lg">
+            <TabsList className="grid w-full grid-cols-2 rounded-lg p-1">
+              <TabsTrigger value="login" className="rounded-md text-xs py-1.5">
                 Login
               </TabsTrigger>
 
-              <TabsTrigger value="signup" className="rounded-lg">
+              <TabsTrigger value="signup" className="rounded-md text-xs py-1.5">
                 Cadastro
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-5">
-                <div className="rounded-2xl border bg-muted/20 p-4 space-y-1">
-                  <p className="font-semibold">Bem-vindo de volta</p>
-                  <p className="text-sm text-muted-foreground">
-                    Entre para continuar acompanhando seus meses, gastos e
-                    insights financeiros.
-                  </p>
-                </div>
+              <form onSubmit={handleSignIn} className="h-[330px] flex flex-col justify-between mt-4">
+                <div className="space-y-3">
+                  <div className="rounded-xl border bg-primary/5 p-3 text-xs text-muted-foreground">
+                    ✨ Controle, previsão e inteligência para organizar suas finanças de forma simples e intuitiva.
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="login-email" className="text-xs">Email</Label>
 
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      required
-                      disabled={loading}
-                      className="pl-9"
-                    />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="pl-9 h-10 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="login-password" className="text-xs">Senha</Label>
+
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                      <Input
+                        id="login-password"
+                        type={showLoginPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="pl-9 pr-10 h-10 text-sm"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowLoginPassword((current) => !current)
+                        }
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                        disabled={loading}
+                      >
+                        {showLoginPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Senha</Label>
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-muted/40 p-2.5 text-[11px] text-muted-foreground leading-normal">
+                    🔒 Seus dados financeiros são processados e armazenados localmente de forma segura.
+                  </div>
 
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        disabled={loading}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
 
-                    <Input
-                      id="login-password"
-                      type={showLoginPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                      disabled={loading}
-                      className="pl-9 pr-10"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowLoginPassword((current) => !current)
-                      }
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                      disabled={loading}
-                    >
-                      {showLoginPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
+                    <Button type="submit" className="w-full h-10 text-sm font-medium" disabled={loading}>
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Entrar
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    disabled={loading}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    Esqueci minha senha
-                  </button>
-                </div>
-
-                <Button type="submit" className="w-full h-11" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
-                </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-5">
-                <div className="rounded-2xl border bg-primary/5 p-4 space-y-1">
-                  <p className="font-semibold">Crie sua conta gratuita</p>
-                  <p className="text-sm text-muted-foreground">
-                    Organize receitas, despesas, reserva financeira e receba
-                    análises inteligentes.
-                  </p>
-                </div>
+              <form onSubmit={handleSignUp} className="h-[330px] flex flex-col justify-between mt-4">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-email" className="text-xs">Email</Label>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="pl-9 h-10 text-sm"
+                      />
+                    </div>
+                  </div>
 
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                      disabled={loading}
-                      className="pl-9"
-                    />
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-password" className="text-xs">Senha</Label>
+
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                      <Input
+                        id="signup-password"
+                        type={showSignupPassword ? "text" : "password"}
+                        placeholder="Mínimo 6 caracteres"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        required
+                        disabled={loading}
+                        className="pl-9 pr-10 h-10 text-sm"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowSignupPassword((current) => !current)
+                        }
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                        disabled={loading}
+                      >
+                        {showSignupPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="signup-confirm-password" className="text-xs">
+                      Confirmar senha
+                    </Label>
+
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+
+                      <Input
+                        id="signup-confirm-password"
+                        type={showSignupConfirmPassword ? "text" : "password"}
+                        placeholder="Confirme sua senha"
+                        value={signupConfirmPassword}
+                        onChange={(e) =>
+                          setSignupConfirmPassword(e.target.value)
+                        }
+                        required
+                        disabled={loading}
+                        className="pl-9 pr-10 h-10 text-sm"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowSignupConfirmPassword((current) => !current)
+                        }
+                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                        disabled={loading}
+                      >
+                        {showSignupConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-
-                    <Input
-                      id="signup-password"
-                      type={showSignupPassword ? "text" : "password"}
-                      placeholder="Mínimo 6 caracteres"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                      disabled={loading}
-                      className="pl-9 pr-10"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowSignupPassword((current) => !current)
-                      }
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                      disabled={loading}
-                    >
-                      {showSignupPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-muted/40 p-2.5 text-[11px] text-muted-foreground leading-normal">
+                    🔒 Seus dados financeiros são processados e armazenados localmente de forma segura.
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    Use pelo menos 6 caracteres para proteger sua conta.
-                  </p>
+                  <Button type="submit" className="w-full h-10 text-sm font-medium" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Criar conta
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-confirm-password">
-                    Confirmar senha
-                  </Label>
-
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-
-                    <Input
-                      id="signup-confirm-password"
-                      type={showSignupConfirmPassword ? "text" : "password"}
-                      placeholder="Digite a senha novamente"
-                      value={signupConfirmPassword}
-                      onChange={(e) =>
-                        setSignupConfirmPassword(e.target.value)
-                      }
-                      required
-                      disabled={loading}
-                      className="pl-9 pr-10"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowSignupConfirmPassword((current) => !current)
-                      }
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-                      disabled={loading}
-                    >
-                      {showSignupConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                  Ao criar sua conta, seus dados financeiros ficam vinculados ao
-                  seu login e são carregados automaticamente ao entrar.
-                </div>
-
-                <Button type="submit" className="w-full h-11" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Criar conta
-                </Button>
               </form>
             </TabsContent>
           </Tabs>

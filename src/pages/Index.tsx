@@ -5,15 +5,24 @@ import { ExpenseList } from "@/components/ExpenseList";
 import { ExpenseChart } from "@/components/ExpenseChart";
 import { SummaryCards } from "@/components/SummaryCards";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Wallet, LogOut, CalendarDays } from "lucide-react";
+import { Wallet, LogOut, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialAssistant } from "@/components/FinancialAssistant";
 import { generateDemoSeed } from "@/data/financialSeed";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { useTheme } from "next-themes";
+import { MonthPicker } from "@/components/MonthPicker";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 type SavedFinanceData = {
   version: number;
@@ -22,7 +31,15 @@ type SavedFinanceData = {
 };
 
 const MASTER_STORAGE_KEY = "finance-app-expenses-master";
-const SEED_CONTROL_KEY = "finance-app-seed-loaded-global";
+
+const RECOVERED_MAY_EXPENSE: Expense = {
+  id: "1779318104135",
+  description: "Almoço no restaurante ",
+  amount: 1000,
+  category: "Compras",
+  date: "2026-05-20T23:01:44.135Z",
+  type: "income",
+};
 
 const getStorageKeyByUserId = (userId: string) =>
   `finance-app-expenses-${userId}`;
@@ -120,6 +137,7 @@ const Index = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [hasLoadedExpenses, setHasLoadedExpenses] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -165,27 +183,28 @@ const Index = () => {
       .filter((data): data is SavedFinanceData => data !== null);
 
     const bestSavedData = chooseBestSavedData(savedDataList);
+    let currentExpenses = bestSavedData ? bestSavedData.expenses : [];
 
-    if (bestSavedData) {
-      setExpenses(bestSavedData.expenses);
-      saveStoredExpenses(possibleKeys, bestSavedData.expenses);
-      setHasLoadedExpenses(true);
-      return;
+    // 1. Restaurar automaticamente a transação perdida de Maio se ela não estiver na lista
+    if (!currentExpenses.some((e) => e.id === RECOVERED_MAY_EXPENSE.id)) {
+      currentExpenses = [RECOVERED_MAY_EXPENSE, ...currentExpenses];
     }
 
-    const seedAlreadyLoaded = localStorage.getItem(SEED_CONTROL_KEY);
+    // 2. Carregar seeds automaticamente se não tiverem sido carregadas para este usuário
+    const seedControlKey = `finance-app-seed-loaded-${user.id}`;
+    const seedAlreadyLoaded = localStorage.getItem(seedControlKey);
 
     if (!seedAlreadyLoaded) {
       const seed = generateDemoSeed();
-
-      setExpenses(seed);
-      saveStoredExpenses(possibleKeys, seed);
-      localStorage.setItem(SEED_CONTROL_KEY, "true");
-      setHasLoadedExpenses(true);
-      return;
+      const existingIds = new Set(currentExpenses.map((e) => e.id));
+      const uniqueSeed = seed.filter((e) => !existingIds.has(e.id));
+      currentExpenses = [...currentExpenses, ...uniqueSeed];
+      localStorage.setItem(seedControlKey, "true");
     }
 
-    setExpenses([]);
+    // Salvar o estado final com os dados mesclados e restaurados
+    saveStoredExpenses(possibleKeys, currentExpenses);
+    setExpenses(currentExpenses);
     setHasLoadedExpenses(true);
   }, [user, loading, navigate]);
 
@@ -194,6 +213,21 @@ const Index = () => {
 
     persistExpenses(expenses);
   }, [expenses, user, hasLoadedExpenses, persistExpenses]);
+
+  // Carregar o mês anteriormente selecionado do localStorage no início
+  useEffect(() => {
+    if (!user) return;
+    const savedMonth = localStorage.getItem(`finance-app-selected-month-${user.id}`);
+    if (savedMonth) {
+      setSelectedMonth(savedMonth);
+    }
+  }, [user]);
+
+  // Salvar o mês selecionado no localStorage sempre que mudar
+  useEffect(() => {
+    if (!user) return;
+    localStorage.setItem(`finance-app-selected-month-${user.id}`, selectedMonth);
+  }, [selectedMonth, user]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
@@ -245,41 +279,82 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-primary/10 p-4">
-              <Wallet className="h-8 w-8 text-primary" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md shadow-sm">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl bg-primary/10 p-2 text-primary">
+              <Wallet className="h-5 w-5" />
             </div>
-
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Gestão Financeira
-              </h1>
-
-              <p className="text-muted-foreground">{user.email}</p>
-            </div>
+            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+              Gestão Financeira
+            </span>
           </div>
 
-          <Button variant="destructive" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        </header>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full border border-border bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label="Alternar tema"
+              type="button"
+            >
+              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-amber-500" />
+              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-blue-400" />
+            </Button>
 
-        <div className="space-y-2 max-w-xs">
-          <Label htmlFor="selectedMonth" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Mês do relatório
-          </Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full bg-secondary hover:bg-secondary/80 p-0 border border-border">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs uppercase">
+                      {user.email ? user.email.substring(0, 2) : "US"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">Usuário</p>
+                    <p className="text-xs leading-none text-muted-foreground truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sair</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </nav>
 
-          <Input
-            id="selectedMonth"
-            type="month"
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-          />
+      {/* Conteúdo Principal */}
+      <main className="container mx-auto px-4 py-8 flex-1 space-y-8 max-w-7xl">
+        {/* Header e Controles */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+            <p className="text-sm text-muted-foreground">
+              Acompanhe suas receitas, despesas e saldo mensal.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground hidden md:inline">
+              Período:
+            </span>
+            <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+          </div>
         </div>
 
         <SummaryCards expenses={filteredExpenses} />
@@ -302,7 +377,7 @@ const Index = () => {
           expenses={filteredExpenses}
           onDeleteExpense={handleDeleteExpense}
         />
-      </div>
+      </main>
     </div>
   );
 };
