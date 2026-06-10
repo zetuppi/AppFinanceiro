@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export interface Expense {
 
 interface ExpenseFormProps {
   onAddExpense: (expense: Expense) => void;
+  selectedMonth: string;
 }
 
 const categories = [
@@ -50,14 +51,46 @@ const getTodayDate = () => {
   return new Date().toISOString().split("T")[0];
 };
 
-export const ExpenseForm = ({ onAddExpense }: ExpenseFormProps) => {
+export const ExpenseForm = ({ onAddExpense, selectedMonth }: ExpenseFormProps) => {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
-  const [date, setDate] = useState(getTodayDate());
+  
+  const getInitialDate = () => {
+    const today = new Date();
+    const todayDay = String(today.getDate()).padStart(2, "0");
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const day = Math.min(parseInt(todayDay, 10), daysInMonth);
+    const paddedDay = String(day).padStart(2, "0");
+    return `${yearStr}-${monthStr}-${paddedDay}`;
+  };
+
+  const [date, setDate] = useState(getInitialDate);
   const [type, setType] = useState<"expense" | "income">("expense");
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+    
+    setDate((prevDate) => {
+      // Parse the current date's day of the month
+      const currentDay = prevDate.split("-")[2] || "01";
+      const [yearStr, monthStr] = selectedMonth.split("-");
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      
+      // Get maximum days in the target month
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const day = Math.min(parseInt(currentDay, 10), daysInMonth);
+      const paddedDay = String(day).padStart(2, "0");
+      
+      return `${yearStr}-${monthStr}-${paddedDay}`;
+    });
+  }, [selectedMonth]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
